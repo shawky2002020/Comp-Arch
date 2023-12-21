@@ -2,8 +2,6 @@
 //
 //_Interrupt_Request
 //
-// Written by Kitune-san
-//
 module Interrupt_Request (
     input           clock,
     input           reset,

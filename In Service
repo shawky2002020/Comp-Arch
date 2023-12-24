@@ -31,7 +31,7 @@ module Common_Package;
     endfunction
 
     function [7:0] resolv_priority(input [7:0] request);
-        if (request[0]) resolv_priority = 8'b00000001;
+             if (request[0]) resolv_priority = 8'b00000001;
         else if (request[1]) resolv_priority = 8'b00000010;
         else if (request[2]) resolv_priority = 8'b00000100;
         else if (request[3]) resolv_priority = 8'b00001000;
@@ -78,8 +78,8 @@ module In_Service (
     input  reset,
 
     input [2:0] priority_rotate,
-    input [7:0] interrupt_special_mask,
-    input [7:0] interrupt,
+    input [7:0] interrupt_special_mask,// Inputs from control logic
+    input [7:0] interrupt,//from priorty resolver
     input  latch_in_service,
     input [7:0] end_of_interrupt,
 
@@ -87,16 +87,15 @@ module In_Service (
     output reg [7:0] in_service_register,
     output reg [7:0] highest_level_in_service
 );
-    // In service register
-    reg [7:0] next_in_service_register;
 
-    always @(negedge clock or posedge reset) begin
-        if (reset)
-            next_in_service_register <= 8'b00000000;
-        else
-            next_in_service_register <= (in_service_register & ~end_of_interrupt)
-                                        | (latch_in_service ? interrupt : 8'b00000000);
-    end
+ 
+    //
+    // In service register
+    //
+    wire [7:0]   next_in_service_register;
+    assign next_in_service_register = (in_service_register & ~end_of_interrupt)
+                                     | (latch_in_service ? interrupt : 8'b00000000);
+                                     
 
     always @(negedge clock or posedge reset) begin
         if (reset)
@@ -105,40 +104,23 @@ module In_Service (
             in_service_register <= next_in_service_register;
     end
 
+
+
+    //
     // Get Highest level in service
-    reg [7:0] next_highest_level_in_service;
+    //
+    reg [7:0]   next_highest_level_in_service;
 
-    always begin
+
+
+    always @(posedge clock or posedge reset) begin
         next_highest_level_in_service = next_in_service_register & ~interrupt_special_mask;
-
-        case (priority_rotate)
-            3'b000: next_highest_level_in_service = next_highest_level_in_service;
-            3'b001: next_highest_level_in_service = {next_highest_level_in_service[1:0], next_highest_level_in_service[7:2]};
-            3'b010: next_highest_level_in_service = {next_highest_level_in_service[2:0], next_highest_level_in_service[7:3]};
-            3'b011: next_highest_level_in_service = {next_highest_level_in_service[3:0], next_highest_level_in_service[7:4]};
-            3'b100: next_highest_level_in_service = {next_highest_level_in_service[4:0], next_highest_level_in_service[7:5]};
-            3'b101: next_highest_level_in_service = {next_highest_level_in_service[5:0], next_highest_level_in_service[7:6]};
-            3'b110: next_highest_level_in_service = {next_highest_level_in_service[6:0], next_highest_level_in_service[7]};
-            3'b111: next_highest_level_in_service = next_highest_level_in_service;
-          default: next_highest_level_in_service = next_highest_level_in_service;
-        endcase
-
+        next_highest_level_in_service = rotate_right(next_highest_level_in_service, priority_rotate);
         next_highest_level_in_service = resolv_priority(next_highest_level_in_service);
-
-        case (priority_rotate)
-            3'b000: next_highest_level_in_service = next_highest_level_in_service;
-            3'b001: next_highest_level_in_service = {next_highest_level_in_service[6:0], next_highest_level_in_service[7]};
-            3'b010: next_highest_level_in_service = {next_highest_level_in_service[5:0], next_highest_level_in_service[7:6]};
-            3'b011: next_highest_level_in_service = {next_highest_level_in_service[4:0], next_highest_level_in_service[7:5]};
-            3'b100: next_highest_level_in_service = {next_highest_level_in_service[3:0], next_highest_level_in_service[7:4]};
-            3'b101: next_highest_level_in_service = {next_highest_level_in_service[2:0], next_highest_level_in_service[7:3]};
-            3'b110: next_highest_level_in_service = {next_highest_level_in_service[1:0], next_highest_level_in_service[7:2]};
-            3'b111: next_highest_level_in_service = next_highest_level_in_service;
-            default: next_highest_level_in_service = next_highest_level_in_service;
-        endcase
-    end
-
-    always @(negedge clock or posedge reset) begin
+        next_highest_level_in_service = rotate_left(next_highest_level_in_service, priority_rotate );
+            end
+            
+   always @(posedge clock or posedge reset) begin
         if (reset)
             highest_level_in_service <= 8'b00000000;
         else

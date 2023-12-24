@@ -1,7 +1,7 @@
-`ifndef 8259_COMMON_PACKAGE_SVH
-`define 8259_COMMON_PACKAGE_SVH
+`ifndef COMMON_PACKAGE_SVH
+`define COMMON_PACKAGE_SVH
 
-module 8259_Common_Package;
+module Common_Package;
     function [7:0] rotate_right(input [7:0] source, input [2:0] rotate);
         casez (rotate)
             3'b000:  rotate_right = {source[0], source[7:1]};
@@ -72,48 +72,65 @@ endmodule
 
 `endif
 
-module Priority_Resolver (
+
+
+    module Priority_Resolver (
     // Inputs from control logic
-    input [2:0] priority_rotate,
-    input [7:0] interrupt_mask,
-    input [7:0] interrupt_special_mask,
-    input special_fully_nest_config,
-    input [7:0] highest_level_in_service,
+    input   [2:0]   priority_rotate,
+    input   [7:0]   interrupt_mask,
+    input   [7:0]   interrupt_special_mask,
+    input           special_fully_nest_config,
+    input   [7:0]   highest_level_in_service,
 
     // Inputs
-    input [7:0] interrupt_request_register,
-    input [7:0] in_service_register,
+    input   [7:0]   interrupt_request_register,
+    input   [7:0]   in_service_register,
 
     // Outputs
-    output [7:0] interrupt
+    output  [7:0]   interrupt
 );
-  //  import 8259_Common_Package::*;
 
     // Masked flags
-    wire [7:0] masked_interrupt_request = interrupt_request_register & ~interrupt_mask;
-    wire [7:0] masked_in_service = in_service_register & ~interrupt_special_mask;
+    wire [7:0] masked_interrupt_request;
+    assign masked_interrupt_request = interrupt_request_register & ~interrupt_mask;
+
+    wire [7:0] masked_in_service;
+    assign masked_in_service = in_service_register & ~interrupt_special_mask;
 
     // Resolve priority
-    wire [7:0] rotated_request = rotate_right(masked_interrupt_request, priority_rotate);
-    wire [7:0] rotated_highest_level_in_service = rotate_right(highest_level_in_service, priority_rotate);
+    wire [7:0] rotated_request;
+    reg [7:0] rotated_in_service;
+    wire [7:0] rotated_highest_level_in_service;
+    reg [7:0] priority_mask;
+    wire [7:0] rotated_interrupt;
+    
 
-    wire [7:0] rotated_in_service;
+    assign rotated_request = rotate_right(masked_interrupt_request, priority_rotate);
+    assign rotated_highest_level_in_service = rotate_right(highest_level_in_service, priority_rotate);
 
-    assign rotated_in_service = (special_fully_nest_config) ? (masked_in_service & ~rotated_highest_level_in_service) | {rotated_highest_level_in_service[6:0], 1'b0} : masked_in_service;
+    always begin
+        rotated_in_service = rotate_right(masked_in_service, priority_rotate);
 
-    wire [7:0] priority_mask;
-    assign priority_mask = (rotated_in_service == 8'b0) ? 8'b11111111 :
-                           (rotated_in_service == 8'b1) ? 8'b11111110 :
-                           (rotated_in_service == 8'b11) ? 8'b11111100 :
-                           (rotated_in_service == 8'b111) ? 8'b11111000 :
-                           (rotated_in_service == 8'b1111) ? 8'b11110000 :
-                           (rotated_in_service == 8'b11111) ? 8'b11100000 :
-                           (rotated_in_service == 8'b111111) ? 8'b11000000 :
-                           (rotated_in_service == 8'b1111111) ? 8'b10000000 :
-                           8'b00000000;
+        if (special_fully_nest_config)
+            rotated_in_service = (rotated_in_service & ~rotated_highest_level_in_service) | {rotated_highest_level_in_service[6:0], 1'b0};
+    end
 
-    wire [7:0] rotated_interrupt = resolv_priority(rotated_request) & priority_mask;
+    always begin
+        if (rotated_in_service[0]) priority_mask = 8'b00000000;
+        else if (rotated_in_service[1]) priority_mask = 8'b00000001;
+        else if (rotated_in_service[2]) priority_mask = 8'b00000011;
+        else if (rotated_in_service[3]) priority_mask = 8'b00000111;
+        else if (rotated_in_service[4]) priority_mask = 8'b00001111;
+        else if (rotated_in_service[5]) priority_mask = 8'b00011111;
+        else if (rotated_in_service[6]) priority_mask = 8'b00111111;
+        else if (rotated_in_service[7]) priority_mask = 8'b01111111;
+        else priority_mask = 8'b11111111;
+    end
+
+    assign rotated_interrupt = resolv_priority(rotated_request) & priority_mask;
 
     assign interrupt = rotate_left(rotated_interrupt, priority_rotate);
 
 endmodule
+
+

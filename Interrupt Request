@@ -8,7 +8,7 @@ module Interrupt_Request (
 
     // Inputs from control logic
     input           level_or_edge_toriggered_config,
-    input           freeze,
+    input           freeze, // Set freeze to 1 for ACK1 or ACK2 or POLL
     input   [7:0]   clear_interrupt_request,
 
     // External inputs

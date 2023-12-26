@@ -18,8 +18,8 @@ module Interrupt_Request (
     output reg  [7:0]   interrupt_request_register
 );
 
-    reg     [7:0]   low_input_latch;
-    wire    [7:0]   interrupt_request_edge;
+    reg     [7:0]   low_input_latch;        //for edge configuration 
+    wire    [7:0]   interrupt_request_edge; //for edge configuration 
 
     genvar ir_bit_no;
     generate

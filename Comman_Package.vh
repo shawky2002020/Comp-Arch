@@ -1,5 +1,5 @@
-`ifndef COMMON_PACKAGE_V
-`define COMMON_PACKAGE_V
+`ifndef COMMON_PACKAGE_VH
+`define COMMON_PACKAGE_VH
 
 module Common_Package;
     function [7:0] rotate_right(input [7:0] source, input [2:0] rotate);

@@ -1,1 +1,248 @@
+`ifndef COMMON_PACKAGE_V
+`define COMMON_PACKAGE_V
+
+module Control_Logic (
+    input reg           clock,
+    input reg          reset,
+
+    // External input/output
+    input reg [2:0]    cascade_in, //CAS1,CAS2,CAS3
+    output reg [2:0]   cascade_out,//number of interuppt being served
+    output             cascade_io, //enable if 1(slave) input/ 0 (master)output
+
+    input  reg         slave_program_n, //Don't care
+    output             slave_program_or_enable_buffer,// if signal=  1 slave_program / 0 enable_buffer
+
+    input  reg         interrupt_acknowledge_n,
+    output   reg       interrupt_to_cpu,
+
+    // Internal bus
+    input reg [7:0]    internal_data_bus,
+    input reg          write_initial_command_word_1,
+    input reg          write_initial_command_word_2_4,
+    input reg          write_operation_control_word_1,
+    input reg          write_operation_control_word_2,
+    input reg          write_operation_control_word_3,
+
+    input reg          read,
+    output reg          out_control_logic_data,
+    output reg [7:0]    control_logic_data,
+
+    // Registers to interrupt detecting logics
+   output reg          level_or_edge_toriggered_config,
+   output reg          special_fully_nest_config,
+
+    // Registers to Read logics
+   output reg          enable_read_register,
+   output reg          read_register_isr_or_irr, // OCW3[0] IF 0 read IRR / 1 read ISR 
+
+    // Signals from interrupt detectiong logics
+    input reg [7:0]    interrupt,
+    input reg [7:0]    highest_level_in_service,
+
+    // Interrupt control signals
+    output reg    [7:0]    interrupt_mask,
+    output reg    [7:0]    interrupt_special_mask,
+    output reg    [7:0]    end_of_interrupt,
+    output reg    [2:0]    priority_rotate, //the value of rotation
+    output reg             freeze,          // Set freeze to 1 for ACK1 or ACK2 or POLL
+    output reg             latch_in_service,
+    output reg    [7:0]    clear_interrupt_request
+);
+	parameter CMD_READY = 2'b00;
+	parameter WRITE_ICW2 = 2'b01;
+	parameter WRITE_ICW3 = 2'b10;
+	parameter WRITE_ICW4 = 2'b11;
+
+	parameter CTL_READY = 3'b000;
+	parameter ACK1 = 3'b001;
+	parameter ACK2 = 3'b010;
+	parameter ACK3 = 3'b011;
+	parameter POLL = 3'b100;
+
+    // Registers
+    reg    [10:0]  interrupt_vector_address;
+    reg           call_address_interval_4_or_8_config;
+    reg           single_or_cascade_config;           // ICW1 Bit[1] 1 single / 0 cascade 
+    reg           set_icw4_config;                    // use ICW4
+    reg    [7:0]   cascade_device_config;             // ICW3
+    reg           buffered_mode_config;               // ICW4 Bit[3] = 0 ( master/slave = X ) ELSE ICW4 Bit[2]
+    reg           buffered_master_or_slave_config;    //ICW4 Bit[2] 1 master / 0 slave 
+    reg           auto_eoi_config;
+    reg           u8086_or_mcs80_config;
+    reg           special_mask_mode;
+    reg           enable_special_mask_mode;
+    reg           auto_rotate_mode;
+    reg    [7:0]   acknowledge_interrupt;            //take the value of the interrupt
+
+    reg           cascade_slave;                     // 1 Slave / 0 Master
+    reg           cascade_slave_enable;
+    reg           cascade_output_ack_2_3;
+
+    //
+    // Write command state
+    //
+    reg [1:0]      command_state;
+    reg [1:0]      next_command_state;
+
+// State machine
+always begin
+    // Check if the command to write initial command word 1 is asserted
+    if (write_initial_command_word_1 == 1'b1)
+        next_command_state = WRITE_ICW2; // Transition to the next state: WRITE_ICW2
+    else if (write_initial_command_word_2_4 == 1'b1) begin
+        // Check the current state to determine the next state
+        case (command_state)
+            WRITE_ICW2: begin
+                // Check configuration for single or cascade
+                if (single_or_cascade_config == 1'b0)
+                    next_command_state = WRITE_ICW3; // Transition to WRITE_ICW3
+                else if (set_icw4_config == 1'b1)
+                    next_command_state = WRITE_ICW4; // Transition to WRITE_ICW4
+                else
+                    next_command_state = CMD_READY; // Transition to CMD_READY
+            end
+            WRITE_ICW3: begin
+                // Check configuration for set_icw4
+                if (set_icw4_config == 1'b1)
+                    next_command_state = WRITE_ICW4; // Transition to WRITE_ICW4
+                else
+                    next_command_state = CMD_READY; // Transition to CMD_READY
+            end
+            WRITE_ICW4: begin
+                next_command_state = CMD_READY; // Transition to CMD_READY
+            end
+            default: begin
+                next_command_state = CMD_READY; // Default transition to CMD_READY
+            end
+        endcase
+    end
+    else
+        next_command_state = command_state; // No transition, stay in the current state
+end
+
+// Synchronous always block triggered by clock or reset
+always @(negedge clock or posedge reset) begin
+    if (reset)
+        command_state <= CMD_READY; // Reset the state machine to CMD_READY state
+    else
+        command_state <= next_command_state; // Update the state based on the next state
+end
+
+// Writing registers/command signals
+// These wires are used to conditionally enable the writing of specific registers or command signals based on the current state.
+wire    write_initial_command_word_2 = (command_state == WRITE_ICW2) & write_initial_command_word_2_4;
+wire    write_initial_command_word_3 = (command_state == WRITE_ICW3) & write_initial_command_word_2_4;
+wire    write_initial_command_word_4 = (command_state == WRITE_ICW4) & write_initial_command_word_2_4;
+wire    write_operation_control_word_1_registers = (command_state == CMD_READY) & write_operation_control_word_1;
+wire    write_operation_control_word_2_registers = (command_state == CMD_READY) & write_operation_control_word_2;
+wire    write_operation_control_word_3_registers = (command_state == CMD_READY) & write_operation_control_word_3;
+
+//
+// Service control state
+//
+// These are registers used for the service control state.
+// 'next_control_state' is the next state, and 'control_state' is the current state.
+reg[2:0] next_control_state;
+reg[2:0] control_state;
+
+// Detect ACK edge
+// This register and logic are used to detect the falling edge of the 'interrupt_acknowledge_n' signal.
+// It keeps track of the previous state of 'interrupt_acknowledge_n' and detects the falling and rising edges.
+reg  prev_interrupt_acknowledge_n;
+
+always @(negedge clock or posedge reset) begin
+    // Synchronous reset for the 'prev_interrupt_acknowledge_n' register
+    if (reset)
+        prev_interrupt_acknowledge_n <= 1'b1;
+    else
+        prev_interrupt_acknowledge_n <= interrupt_acknowledge_n;
+end
+
+// Wires to indicate falling and rising edges of 'interrupt_acknowledge_n'
+wire    nedge_interrupt_acknowledge =  prev_interrupt_acknowledge_n & ~interrupt_acknowledge_n; // Falling edge
+wire    pedge_interrupt_acknowledge = ~prev_interrupt_acknowledge_n &  interrupt_acknowledge_n; // Rising edge
+
+// Detect read signal edge
+// This register and logic are used to detect the rising edge of the 'read_signal' signal.
+// It keeps track of the previous state of 'read_signal' and detects the rising edge.
+reg prev_read_signal;
+
+
+    // Register to store the previous value of the 'read' signal
+always @(negedge clock or posedge reset) begin
+    if (reset)
+        prev_read_signal <= 1'b0;  // Reset the register to 0 during a reset
+    else
+        prev_read_signal <= read;  // Store the current value of 'read'
+end
+
+// Compute the falling edge of 'read' signal
+wire nedge_read_signal = prev_read_signal & ~read;
+
+// State machine
+always begin
+    case (control_state)
+        CTL_READY: begin
+            // Transition conditions for CTL_READY state
+            if ((write_operation_control_word_3_registers == 1'b1) && (internal_data_bus[2] == 1'b1))
+                next_control_state = POLL;
+            else if (write_operation_control_word_2_registers == 1'b1)
+                next_control_state = CTL_READY;
+            else if (nedge_interrupt_acknowledge == 1'b0)
+                next_control_state = CTL_READY;
+            else
+                next_control_state = ACK1;
+        end
+
+        ACK1: begin
+            // Transition conditions for ACK1 state
+            if (pedge_interrupt_acknowledge == 1'b0)
+                next_control_state = ACK1;
+            else
+                next_control_state = ACK2;
+        end
+
+        ACK2: begin
+            // Transition conditions for ACK2 state
+            if (pedge_interrupt_acknowledge == 1'b0)
+                next_control_state = ACK2;
+            else if (u8086_or_mcs80_config == 1'b0)
+                next_control_state = ACK3;
+            else
+                next_control_state = CTL_READY;
+        end
+
+        ACK3: begin
+            // Transition conditions for ACK3 state
+            if (pedge_interrupt_acknowledge == 1'b0)
+                next_control_state = ACK3;
+            else
+                next_control_state = CTL_READY;
+        end
+
+        POLL: begin
+            // Transition conditions for POLL state
+            if (nedge_read_signal == 1'b0)
+                next_control_state = POLL;
+            else
+                next_control_state = CTL_READY;
+        end
+
+        default: begin
+            // Default transition to CTL_READY state for undefined states
+            next_control_state = CTL_READY;
+        end
+    endcase
+end
+
+   // State control logic for the 8259 Interrupt Controller
+always @(negedge clock or posedge reset) begin
+    if (reset)
+        control_state <= CTL_READY; // Reset state to CTL_READY
+    else if (write_initial_command_word_1 == 1'b1)
+        control_state <= CTL_READY; // Reset state to CTL_READY on writing initial command word 1
+    else
+        control_state <= next_control_state; // Update state based on the next control state
+end
 

@@ -125,3 +125,102 @@ module TopModule (
         .clear_interrupt_request            (clear_interrupt_request)
     );
 
+ //
+    // Interrupt Request
+    //
+    reg     [7:0]   interrupt_request_register;
+
+    Interrupt_Request u_Interrupt_Request (
+        // Bus
+        .clock                              (clock),
+        .reset                              (reset),
+
+        // Inputs from control logic
+        .level_or_edge_toriggered_config    (level_or_edge_toriggered_config),
+        .freeze                             (freeze),
+        .clear_interrupt_request            (clear_interrupt_request),
+
+        // External inputs
+        .interrupt_request_pin              (interrupt_request),
+
+        // Outputs
+        .interrupt_request_register         (interrupt_request_register)
+    );
+
+    //
+    // Priority Resolver
+    //
+    reg     [7:0]   in_service_register;
+
+    Priority_Resolver u_Priority_Resolver (
+        // Inputs from control logic
+        .priority_rotate                    (priority_rotate),
+        .interrupt_mask                     (interrupt_mask),
+        .interrupt_special_mask             (interrupt_special_mask),
+        .special_fully_nest_config          (special_fully_nest_config),
+        .highest_level_in_service           (highest_level_in_service),
+
+        // Inputs
+        .interrupt_request_register         (interrupt_request_register),
+        .in_service_register                (in_service_register),
+
+        // Outputs
+        .interrupt                          (interrupt)
+    );
+
+    //
+    // In Service
+    //
+    In_Service u_In_Service (
+        // Bus
+        .clock                              (clock),
+        .reset                              (reset),
+
+        // Inputs
+        .priority_rotate                    (priority_rotate),
+        .interrupt_special_mask             (interrupt_special_mask),
+        .interrupt                          (interrupt),
+        .latch_in_service                   (latch_in_service),
+        .end_of_interrupt                   (end_of_interrupt),
+
+        // Outputs
+        .in_service_register                (in_service_register),
+        .highest_level_in_service           (highest_level_in_service)
+    );
+
+    //
+    // Data Bus Buffer & Read/Write Control Logic (2)
+    //
+    // Data bus
+    always begin
+        if (out_control_logic_data == 1'b1) begin
+            data_bus_io  = 1'b0;
+            data_bus_out = control_logic_data;
+        end
+        else if (read == 1'b0) begin
+            data_bus_io  = 1'b1;
+            data_bus_out = 8'b00000000;
+        end
+        else if (address == 1'b1) begin
+            data_bus_io  = 1'b0;
+            data_bus_out = interrupt_mask;
+        end
+        else if ((enable_read_register == 1'b1) && (read_register_isr_or_irr == 1'b0)) begin
+            data_bus_io  = 1'b0;
+            data_bus_out = interrupt_request_register;
+        end
+        else if ((enable_read_register == 1'b1) && (read_register_isr_or_irr == 1'b1)) begin
+            data_bus_io  = 1'b0;
+            data_bus_out = in_service_register;
+        end
+        else begin
+            data_bus_io  = 1'b1;
+            data_bus_out = 8'b00000000;
+        end
+    end
+
+    // Read buffer enable signal
+    assign  buffer_enable = (slave_program_or_enable_buffer == 1'b1) ? 1'b0 : ~data_bus_io;
+
+endmodule
+

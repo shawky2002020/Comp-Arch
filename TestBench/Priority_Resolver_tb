@@ -316,3 +316,166 @@ end
         highest_level_in_service = 8'b00010000;
         #(`TB_CYCLE * 1);
         TASK_SCAN_INTERRUPT_REQUEST();
+$display("***** TEST FULLY NEST BIT5 ***** at %d", tb_cycle_counter);
+        in_service_register      = 8'b00100000;
+        highest_level_in_service = 8'b00100000;
+        #(`TB_CYCLE * 1);
+        TASK_SCAN_INTERRUPT_REQUEST();
+
+        $display("***** TEST FULLY NEST BIT6 ***** at %d", tb_cycle_counter);
+        in_service_register      = 8'b01000000;
+        highest_level_in_service = 8'b01000000;
+        #(`TB_CYCLE * 1);
+        TASK_SCAN_INTERRUPT_REQUEST();
+
+        $display("***** TEST FULLY NEST BIT7 ***** at %d", tb_cycle_counter);
+        in_service_register      = 8'b10000000;
+        highest_level_in_service = 8'b10000000;
+        #(`TB_CYCLE * 1);
+        TASK_SCAN_INTERRUPT_REQUEST();
+
+        in_service_register      = 8'b00000000;
+        highest_level_in_service = 8'b00000000;
+
+        special_fully_nest_config = 1'b0;
+        #(`TB_CYCLE * 1);
+    end
+    endtask
+
+    //
+    // Task : ROTATION TEST
+    //
+    task TASK_ROTATION_TEST();
+    begin
+        $display("***** TEST ROTATE 0 ***** at %d", tb_cycle_counter);
+        priority_rotate = 3'b000;
+        #(`TB_CYCLE * 1);
+        TASK_SCAN_INTERRUPT_REQUEST();
+        interrupt_request_register = 8'b00000001;
+        #(`TB_CYCLE * 1);
+        interrupt_request_register = 8'b00000000;
+
+        $display("***** TEST ROTATE 1 ***** at %d", tb_cycle_counter);
+        priority_rotate = 3'b001;
+        #(`TB_CYCLE * 1);
+        TASK_SCAN_INTERRUPT_REQUEST();
+        interrupt_request_register = 8'b00000010;
+        #(`TB_CYCLE * 1);
+        interrupt_request_register = 8'b00000011;
+        #(`TB_CYCLE * 1);
+        interrupt_request_register = 8'b00000000;
+
+        $display("***** TEST ROTATE 2 ***** at %d", tb_cycle_counter);
+        priority_rotate = 3'b010;
+        #(`TB_CYCLE * 1);
+        TASK_SCAN_INTERRUPT_REQUEST();
+        interrupt_request_register = 8'b00000100;
+        #(`TB_CYCLE * 1);
+        interrupt_request_register = 8'b00000110;
+        #(`TB_CYCLE * 1);
+        interrupt_request_register = 8'b00000111;
+        #(`TB_CYCLE * 1);
+        interrupt_request_register = 8'b00000000;
+
+        $display("***** TEST ROTATE 3 ***** at %d", tb_cycle_counter);
+        priority_rotate = 3'b011;
+        #(`TB_CYCLE * 1);
+        TASK_SCAN_INTERRUPT_REQUEST();
+        interrupt_request_register = 8'b00001000;
+        #(`TB_CYCLE * 1);
+        interrupt_request_register = 8'b00001100;
+        #(`TB_CYCLE * 1);
+        interrupt_request_register = 8'b00001110;
+        #(`TB_CYCLE * 1);
+        interrupt_request_register = 8'b00001111;
+        #(`TB_CYCLE * 1);
+        interrupt_request_register = 8'b00000000;
+
+        $display("***** TEST ROTATE 4 ***** at %d", tb_cycle_counter);
+        priority_rotate = 3'b100;
+        #(`TB_CYCLE * 1);
+        TASK_SCAN_INTERRUPT_REQUEST();
+        interrupt_request_register = 8'b00010000;
+        #(`TB_CYCLE * 1);
+        interrupt_request_register = 8'b00011000;
+        #(`TB_CYCLE * 1);
+        interrupt_request_register = 8'b00011100;
+        #(`TB_CYCLE * 1);
+        interrupt_request_register = 8'b00011110;
+        #(`TB_CYCLE * 1);
+        interrupt_request_register = 8'b00011111;
+        #(`TB_CYCLE * 1);
+        interrupt_request_register = 8'b00000000;
+
+        $display("***** TEST ROTATE 5 ***** at %d", tb_cycle_counter);
+        priority_rotate = 3'b101;
+        #(`TB_CYCLE * 1);
+        TASK_SCAN_INTERRUPT_REQUEST();
+        interrupt_request_register = 8'b00100000;
+        #(`TB_CYCLE * 1);
+        interrupt_request_register = 8'b00110000;
+        #(`TB_CYCLE * 1);
+        interrupt_request_register = 8'b00111000;
+        #(`TB_CYCLE * 1);
+        interrupt_request_register = 8'b00111100;
+        #(`TB_CYCLE * 1);
+        interrupt_request_register = 8'b00111110;
+        #(`TB_CYCLE * 1);
+        interrupt_request_register = 8'b00111111;
+        #(`TB_CYCLE * 1);
+        interrupt_request_register = 8'b00000000;
+
+        $display("***** TEST ROTATE 6 ***** at %d", tb_cycle_counter);
+        priority_rotate = 3'b110;
+        #(`TB_CYCLE * 1);
+        TASK_SCAN_INTERRUPT_REQUEST();
+        interrupt_request_register = 8'b01000000;
+        #(`TB_CYCLE * 1);
+        interrupt_request_register = 8'b01100000;
+        #(`TB_CYCLE * 1);
+        interrupt_request_register = 8'b01110000;
+        #(`TB_CYCLE * 1);
+        interrupt_request_register = 8'b01111000;
+        #(`TB_CYCLE * 1);
+        interrupt_request_register = 8'b01111100;
+        #(`TB_CYCLE * 1);
+        interrupt_request_register = 8'b01111110;
+        #(`TB_CYCLE * 1);
+        interrupt_request_register = 8'b01111111;
+        #(`TB_CYCLE * 1);
+        interrupt_request_register = 8'b00000000;
+
+        $display("***** TEST ROTATE 7 ***** at %d", tb_cycle_counter);
+        priority_rotate = 3'b111;
+        #(`TB_CYCLE * 1);
+        TASK_SCAN_INTERRUPT_REQUEST();
+        interrupt_request_register = 8'b00000000;
+        #(`TB_CYCLE * 1);
+    end
+    endtask
+    
+    
+    // Test pattern
+    initial begin
+        TASK_INIT();
+
+        $display("***** TEST INTERRUPT NASK ***** at %d", tb_cycle_counter);
+        TASK_INTERRUPT_MASK_TEST();
+
+        $display("***** TEST IN-SERVICE INTERRUPT ***** at %d", tb_cycle_counter);
+        TASK_IN_SERVICE_INTERRUPT_TEST();
+
+        $display("***** TEST SPECIAL MASK MODE ***** at %d", tb_cycle_counter);
+        TASK_SPECIAL_MASK_MODE_TEST();
+
+        $display("***** TEST SPECIAL FULLY NEST MODE ***** at %d", tb_cycle_counter);
+        TASK_SPECIAL_FULLY_NEST_MODE_TEST();
+
+        $display("***** TEST ROTATION ***** at %d", tb_cycle_counter);
+        TASK_ROTATION_TEST();
+
+        #(`TB_CYCLE * 1);
+        // End of simulation
+        $finish;
+    end
+endmodule

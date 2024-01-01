@@ -1,6 +1,8 @@
 `ifndef COMMON_PACKAGE_V
 `define COMMON_PACKAGE_V
 
+`include "Common_Package.v"
+
     module Priority_Resolver (
     // Inputs from control logic
     input   [2:0]   priority_rotate,

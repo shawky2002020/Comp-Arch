@@ -487,5 +487,265 @@ always @(negedge clock or posedge reset) begin
     else
         priority_rotate <= priority_rotate; // No change otherwise
 end
+//
+// Operation control word 3
+//
+// ESMM / SMM
+always @(negedge clock or posedge reset) begin
+    if (reset) begin
+        special_mask_mode <= 1'b0; // Initialize special_mask_mode to 0 on reset
+    end
+    else if (write_initial_command_word_1 == 1'b1) begin
+        special_mask_mode <= 1'b0; // Reset special_mask_mode when writing initial command word 1
+    end
+    else if ((write_operation_control_word_3_registers == 1'b1) && (internal_data_bus[6] == 1'b1)) begin
+        special_mask_mode <= internal_data_bus[5]; // Update special_mask_mode based on data bus when writing operation control word 3
+    end
+    else begin
+        special_mask_mode <= special_mask_mode; // No change otherwise
+    end
+end
+
+// RR/RIS
+always @(negedge clock or posedge reset) begin
+    if (reset) begin
+        enable_read_register     <= 1'b1; // Enable reading register on reset
+        read_register_isr_or_irr <= 1'b0; // read from IRR
+    end
+    else if (write_initial_command_word_1 == 1'b1) begin
+        enable_read_register     <= 1'b1; // Enable reading register when writing initial command word 1
+        read_register_isr_or_irr <= 1'b0; // Set read from IRR  when writing initial command word 1
+    end
+    else if (write_operation_control_word_3_registers == 1'b1) begin
+        enable_read_register     <= internal_data_bus[1]; // Update enable_read_register based on data bus when writing operation control word 3
+        read_register_isr_or_irr <= internal_data_bus[0]; // OCW3[0] IF 0 read IRR / 1 read ISR 
+    end
+    else begin
+        enable_read_register     <= enable_read_register;     // No change otherwise
+        read_register_isr_or_irr <= read_register_isr_or_irr; // No change otherwise
+    end
+end
+
+//
+// Cascade signals
+//
+// Select master/slave
+always begin
+    if (single_or_cascade_config == 1'b1)
+        cascade_slave = 1'b0; // Set cascade_slave to 0 when in single mode
+    else if (buffered_mode_config == 1'b0)
+        cascade_slave = ~slave_program_n; // Set cascade_slave based on slave_program_n when not in buffered mode
+    else
+        cascade_slave = ~buffered_master_or_slave_config; // Set cascade_slave based on buffered_master_or_slave_config when in buffered mode
+end
+
+// Cascade port I/O
+assign cascade_io = cascade_slave; // Set cascade_io based on cascade_slave
+
+  //
+// Cascade signals (slave)
+//
+always begin
+    if (cascade_slave == 1'b0)
+        cascade_slave_enable = 1'b0; // Disable cascade for the slave
+    else if (cascade_device_config[2:0] != cascade_in)
+        cascade_slave_enable = 1'b0; // Disable cascade if configuration does not match
+    else
+        cascade_slave_enable = 1'b1; // Enable cascade for the slave
+end
+
+//
+// Cascade signals (master)
+//
+wire interrupt_from_slave_device = (acknowledge_interrupt & cascade_device_config) != 8'b00000000;
+
+// output ACK2 and ACK3
+always begin
+    if (single_or_cascade_config == 1'b1)
+        cascade_output_ack_2_3 = 1'b1; // Output ACK2 and ACK3 in single mode
+    else if (cascade_slave_enable == 1'b1)
+        cascade_output_ack_2_3 = 1'b1; // Output ACK2 and ACK3 when cascade is enabled for the slave
+    else if ((cascade_slave == 1'b0) && (interrupt_from_slave_device == 1'b0))
+        cascade_output_ack_2_3 = 1'b1; // Output ACK2 and ACK3 when not in cascade mode and no interrupt from slave device
+    else
+        cascade_output_ack_2_3 = 1'b0; // Otherwise, disable ACK2 and ACK3
+  end
+// Output slave id
+always begin
+    if (cascade_slave == 1'b1)
+        cascade_out <= 3'b000; // Output slave ID 000 when in cascade slave mode
+    else if ((control_state != ACK1) && (control_state != ACK2) && (control_state != ACK3))
+        cascade_out <= 3'b000; // Output slave ID 000 when not in ACK1, ACK2, or ACK3 state
+    else if (interrupt_from_slave_device == 1'b0)
+        cascade_out <= 3'b000; // Output slave ID 000 when no interrupt from slave device
+    else
+        cascade_out <= bit2num(acknowledge_interrupt); // Output the slave ID corresponding to the acknowledge interrupt
+end
+
+//
+// Interrupt control signals
+//
+// INT
+always @(negedge clock or posedge reset) begin
+    if (reset)
+        interrupt_to_cpu <= 1'b0; // Reset interrupt_to_cpu to 0 on reset
+    else if (write_initial_command_word_1 == 1'b1)
+        interrupt_to_cpu <= 1'b0; // Reset interrupt_to_cpu when writing initial command word 1
+    else if (interrupt != 8'b00000000)
+        interrupt_to_cpu <= 1'b1; // Set interrupt_to_cpu to 1 when there is an interrupt
+    else if (end_of_acknowledge_sequence == 1'b1)
+        interrupt_to_cpu <= 1'b0; // Reset interrupt_to_cpu at the end of acknowledge sequence
+    else if (end_of_poll_command == 1'b1)
+        interrupt_to_cpu <= 1'b0; // Reset interrupt_to_cpu at the end of poll command
+    else
+        interrupt_to_cpu <= interrupt_to_cpu; // No change otherwise
+end
+
+// freeze
+always @(negedge clock or posedge reset) begin
+    if (reset)
+        freeze <= 1'b1; // Set freeze to 1 on reset
+    else if (next_control_state == CTL_READY)
+        freeze <= 1'b0; // Reset freeze when transitioning to CTL_READY state
+    else
+        freeze <= 1'b1; // Set freeze to 1 for ACK1 or ACK2 or POLL
+end
+
+
+// clear_interrupt_request
+always begin
+    if (write_initial_command_word_1 == 1'b1)
+        clear_interrupt_request = 8'b11111111; // Set all bits to 1 when writing initial command word 1
+    else if (latch_in_service == 1'b0)
+        clear_interrupt_request = 8'b00000000; // Clear interrupt request when latch_in_service is 0
+    else
+        clear_interrupt_request = interrupt; // Preserve interrupt value otherwise
+end
+
+
+  // interrupt buffer
+always @(negedge clock or posedge reset) begin
+    if (reset)
+        acknowledge_interrupt <= 8'b00000000; // Initialize acknowledge_interrupt to 0 on reset
+    else if (write_initial_command_word_1 == 1'b1)
+        acknowledge_interrupt <= 8'b00000000; // Reset acknowledge_interrupt when writing initial command word 1
+    else if (end_of_acknowledge_sequence)
+        acknowledge_interrupt <= 8'b00000000; // Reset acknowledge_interrupt at the end of acknowledge sequence
+    else if (end_of_poll_command == 1'b1)
+        acknowledge_interrupt <= 8'b00000000; // Reset acknowledge_interrupt at the end of poll command
+    else if (latch_in_service == 1'b1)
+        acknowledge_interrupt <= interrupt; // Latch in interrupt value when latch_in_service is 1
+    else
+        acknowledge_interrupt <= acknowledge_interrupt; // Preserve acknowledge_interrupt otherwise
+end
+
+// interrupt buffer
+reg [7:0] interrupt_when_ack1;
+
+always @(negedge clock or posedge reset) begin
+    if (reset)
+        interrupt_when_ack1 <= 8'b00000000; // Initialize interrupt_when_ack1 to 0 on reset
+    else if (write_initial_command_word_1 == 1'b1)
+        interrupt_when_ack1 <= 8'b00000000; // Reset interrupt_when_ack1 when writing initial command word 1
+    else if (control_state == ACK1)
+        interrupt_when_ack1 <= interrupt; // Latch in interrupt value when in ACK1 state
+    else
+        interrupt_when_ack1 <= interrupt_when_ack1; // Preserve interrupt_when_ack1 otherwise
+end
+
+// control_logic_data
+    always begin
+        if (interrupt_acknowledge_n == 1'b0) begin
+            // Acknowledge
+            case (control_state)
+                CTL_READY: begin
+                    if (cascade_slave == 1'b0) begin
+                        if (u8086_or_mcs80_config == 1'b0) begin
+                            out_control_logic_data = 1'b1;
+                            control_logic_data     = 8'b11001101;
+                        end
+                        else begin
+                            out_control_logic_data = 1'b0;
+                            control_logic_data     = 8'b00000000;
+                        end
+                    end
+                    else begin
+                        out_control_logic_data = 1'b0;
+                        control_logic_data     = 8'b00000000;
+                    end
+                end
+                ACK1: begin
+                    if (cascade_slave == 1'b0) begin
+                        if (u8086_or_mcs80_config == 1'b0) begin
+                            out_control_logic_data = 1'b1;
+                            control_logic_data     = 8'b11001101;
+                        end
+                        else begin
+                            out_control_logic_data = 1'b0;
+                            control_logic_data     = 8'b00000000;
+                        end
+                    end
+                    else begin
+                        out_control_logic_data = 1'b0;
+                        control_logic_data     = 8'b00000000;
+                    end
+                end
+                ACK2: begin
+                    if (cascade_output_ack_2_3 == 1'b1) begin
+                        out_control_logic_data = 1'b1;
+
+                        if (cascade_slave == 1'b1)
+                            control_logic_data[2:0] = bit2num(interrupt_when_ack1);
+                        else
+                            control_logic_data[2:0] = bit2num(acknowledge_interrupt);
+
+                        if (u8086_or_mcs80_config == 1'b0) begin
+                            if (call_address_interval_4_or_8_config == 1'b0)
+                                control_logic_data = {interrupt_vector_address[2:1], control_logic_data[2:0], 3'b000};
+                            else
+                                control_logic_data = {interrupt_vector_address[2:0], control_logic_data[2:0], 2'b00};
+                        end
+                        else begin
+                            control_logic_data = {interrupt_vector_address[10:6], control_logic_data[2:0]};
+                        end
+                    end
+                    else begin
+                        out_control_logic_data = 1'b0;
+                        control_logic_data     = 8'b00000000;
+                    end
+                end
+                ACK3: begin
+                    if (cascade_output_ack_2_3 == 1'b1) begin
+                        out_control_logic_data = 1'b1;
+                        control_logic_data     = interrupt_vector_address[10:3];
+                    end
+                    else begin
+                        out_control_logic_data = 1'b0;
+                        control_logic_data     = 8'b00000000;
+                    end
+                end
+                default: begin
+                    out_control_logic_data = 1'b0;
+                    control_logic_data     = 8'b00000000;
+                end
+            endcase
+        end
+        else if ((control_state == POLL) && (read == 1'b1)) begin
+            // Poll command
+            out_control_logic_data = 1'b1;
+            if (acknowledge_interrupt == 8'b00000000)
+                control_logic_data = 8'b000000000;
+            else begin
+                control_logic_data[7:3] = 5'b10000;
+                control_logic_data[2:0] = bit2num(acknowledge_interrupt);
+            end
+        end
+        else begin
+            // Nothing
+            out_control_logic_data = 1'b0;
+            control_logic_data     = 8'b00000000;
+         end
+     end
+   endmodule
 
 

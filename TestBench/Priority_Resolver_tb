@@ -164,3 +164,155 @@ end
         #(`TB_CYCLE * 1);
     end
     endtask
+ //
+    // Task : IN-SERVICE INTERRUPT TEST
+    //
+    task TASK_IN_SERVICE_INTERRUPT_TEST();
+    begin
+        interrupt_mask = 8'b00000000;
+        #(`TB_CYCLE * 1);
+
+        $display("***** TEST IN-SERVICE BIT0 ***** at %d", tb_cycle_counter);
+        in_service_register = 8'b00000001;
+        #(`TB_CYCLE * 1);
+        TASK_SCAN_INTERRUPT_REQUEST();
+
+        $display("***** TEST IN-SERVICE BIT1 ***** at %d", tb_cycle_counter);
+        in_service_register = 8'b00000010;
+        #(`TB_CYCLE * 1);
+        TASK_SCAN_INTERRUPT_REQUEST();
+
+        $display("***** TEST IN-SERVICE BIT2 ***** at %d", tb_cycle_counter);
+        in_service_register = 8'b00000100;
+        #(`TB_CYCLE * 1);
+        TASK_SCAN_INTERRUPT_REQUEST();
+
+        $display("***** TEST IN-SERVICE BIT3 ***** at %d", tb_cycle_counter);
+        in_service_register = 8'b00001000;
+        #(`TB_CYCLE * 1);
+        TASK_SCAN_INTERRUPT_REQUEST();
+
+        $display("***** TEST IN-SERVICE BIT4 ***** at %d", tb_cycle_counter);
+        in_service_register = 8'b00010000;
+        #(`TB_CYCLE * 1);
+        TASK_SCAN_INTERRUPT_REQUEST();
+
+        $display("***** TEST IN-SERVICE BIT5 ***** at %d", tb_cycle_counter);
+        in_service_register = 8'b00100000;
+        #(`TB_CYCLE * 1);
+        TASK_SCAN_INTERRUPT_REQUEST();
+
+        $display("***** TEST IN-SERVICE BIT6 ***** at %d", tb_cycle_counter);
+        in_service_register = 8'b01000000;
+        #(`TB_CYCLE * 1);
+        TASK_SCAN_INTERRUPT_REQUEST();
+
+        $display("***** TEST IN-SERVICE BIT7 ***** at %d", tb_cycle_counter);
+        in_service_register = 8'b10000000;
+        #(`TB_CYCLE * 1);
+        TASK_SCAN_INTERRUPT_REQUEST();
+
+        in_service_register = 8'b00000000;
+        #(`TB_CYCLE * 1);
+    end
+    endtask
+
+    //
+    // Task : SPECIAL MASK MODE TEST
+    //
+    task TASK_SPECIAL_MASK_MODE_TEST();
+    begin
+        interrupt_mask = 8'b00000000;
+        #(`TB_CYCLE * 1);
+
+        $display("***** TEST SPECIAL MASK BIT0 ***** at %d", tb_cycle_counter);
+        in_service_register    = 8'b00000011;
+        interrupt_special_mask = 8'b00000001;
+        #(`TB_CYCLE * 1);
+        TASK_SCAN_INTERRUPT_REQUEST();
+
+        $display("***** TEST SPECIAL MASK BIT1 ***** at %d", tb_cycle_counter);
+        in_service_register    = 8'b00000110;
+        interrupt_special_mask = 8'b00000010;
+        #(`TB_CYCLE * 1);
+        TASK_SCAN_INTERRUPT_REQUEST();
+
+        $display("***** TEST SPECIAL MASK BIT2 ***** at %d", tb_cycle_counter);
+        in_service_register    = 8'b00001100;
+        interrupt_special_mask = 8'b00000100;
+        #(`TB_CYCLE * 1);
+        TASK_SCAN_INTERRUPT_REQUEST();
+
+        $display("***** TEST SPECIAL MASK BIT3 ***** at %d", tb_cycle_counter);
+        in_service_register    = 8'b00011000;
+        interrupt_special_mask = 8'b00001000;
+        #(`TB_CYCLE * 1);
+        TASK_SCAN_INTERRUPT_REQUEST();
+
+        $display("***** TEST SPECIAL MASK BIT4 ***** at %d", tb_cycle_counter);
+        in_service_register    = 8'b00110000;
+        interrupt_special_mask = 8'b00010000;
+        #(`TB_CYCLE * 1);
+        TASK_SCAN_INTERRUPT_REQUEST();
+
+        $display("***** TEST SPECIAL MASK BIT5 ***** at %d", tb_cycle_counter);
+        in_service_register    = 8'b01100000;
+        interrupt_special_mask = 8'b00100000;
+        #(`TB_CYCLE * 1);
+        TASK_SCAN_INTERRUPT_REQUEST();
+
+        $display("***** TEST SPECIAL MASK BIT6 ***** at %d", tb_cycle_counter);
+        in_service_register    = 8'b11000000;
+        interrupt_special_mask = 8'b01000000;
+        #(`TB_CYCLE * 1);
+        TASK_SCAN_INTERRUPT_REQUEST();
+
+        $display("***** TEST SPECIAL MASK BIT7 ***** at %d", tb_cycle_counter);
+        in_service_register    = 8'b10000000;
+        interrupt_special_mask = 8'b10000000;
+        #(`TB_CYCLE * 1);
+        TASK_SCAN_INTERRUPT_REQUEST();
+
+        in_service_register    = 8'b00000000;
+        interrupt_special_mask = 8'b00000000;
+        #(`TB_CYCLE * 1);
+    end
+    endtask
+
+    //
+    // Task : SPECIAL FULLY NEST MODE TEST
+    //
+    task TASK_SPECIAL_FULLY_NEST_MODE_TEST();
+    begin
+        special_fully_nest_config = 1'b1;
+        #(`TB_CYCLE * 1);
+
+        $display("***** TEST FULLY NEST BIT0 ***** at %d", tb_cycle_counter);
+        in_service_register      = 8'b00000001;
+        highest_level_in_service = 8'b00000001;
+        #(`TB_CYCLE * 1);
+        TASK_SCAN_INTERRUPT_REQUEST();
+
+        $display("***** TEST FULLY NEST BIT1 ***** at %d", tb_cycle_counter);
+        in_service_register      = 8'b00000010;
+        highest_level_in_service = 8'b00000010;
+        #(`TB_CYCLE * 1);
+        TASK_SCAN_INTERRUPT_REQUEST();
+
+        $display("***** TEST FULLY NEST BIT2 ***** at %d", tb_cycle_counter);
+        in_service_register      = 8'b00000100;
+        highest_level_in_service = 8'b00000100;
+        #(`TB_CYCLE * 1);
+        TASK_SCAN_INTERRUPT_REQUEST();
+
+        $display("***** TEST FULLY NEST BIT3 ***** at %d", tb_cycle_counter);
+        in_service_register      = 8'b00001000;
+        highest_level_in_service = 8'b00001000;
+        #(`TB_CYCLE * 1);
+        TASK_SCAN_INTERRUPT_REQUEST();
+
+        $display("***** TEST FULLY NEST BIT4 ***** at %d", tb_cycle_counter);
+        in_service_register      = 8'b00010000;
+        highest_level_in_service = 8'b00010000;
+        #(`TB_CYCLE * 1);
+        TASK_SCAN_INTERRUPT_REQUEST();

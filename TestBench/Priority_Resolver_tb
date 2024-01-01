@@ -1,1 +1,166 @@
+`define TB_CYCLE        20
+`define TB_FINISH_COUNT 20000
 
+module Priority_Resolver_tb();
+
+    // Clock
+    reg clock;
+
+    // Reset
+    reg reset;
+
+    // Cycle counter
+    reg [31:0] tb_cycle_counter;
+
+    // Module under test
+    reg [2:0]   priority_rotate;
+    reg [7:0]   interrupt_mask;
+    reg [7:0]   interrupt_special_mask;
+    reg         special_fully_nest_config;
+    reg [7:0]   highest_level_in_service;
+    reg [7:0]   interrupt_request_register;
+    reg [7:0]   in_service_register;
+    reg [7:0]   interrupt;
+
+Priority_Resolver Priority_Resolver(.*);
+
+    // Test pattern initialization
+    task TASK_INIT();
+    begin
+        #(`TB_CYCLE * 0);
+        priority_rotate            = 3'b111;
+        interrupt_mask             = 8'b11111111;
+        interrupt_special_mask     = 8'b00000000;
+        special_fully_nest_config  = 1'b0;
+        highest_level_in_service   = 8'b00000000;
+        interrupt_request_register = 8'b00000000;
+        in_service_register        = 8'b00000000;
+        #(`TB_CYCLE * 12);
+    end
+    endtask
+       //
+    // Generate clock
+    //
+    
+    initial clock = 1'b1;
+    always #(`TB_CYCLE / 2) clock = ~clock;
+
+    //
+    // Generate reset
+    //
+  
+    initial begin
+        reset = 1'b1;
+            # (`TB_CYCLE * 10)
+        reset = 1'b0;
+    end
+    
+    //
+    // Cycle counter
+    //
+
+always @(posedge clock or posedge reset) begin
+    if (reset) begin
+        tb_cycle_counter <= 32'h0;
+    end else begin
+        tb_cycle_counter <= tb_cycle_counter + 32'h1;
+    end
+end
+
+// For the combinatorial logic, use an if statement
+always @(tb_cycle_counter) begin
+    if (tb_cycle_counter == `TB_FINISH_COUNT) begin
+        $display("***** SIMULATION TIMEOUT ***** at %d", tb_cycle_counter);
+        `ifdef IVERILOG
+            $finish;
+        `elsif MODELSIM
+            $stop;
+        `else
+            $finish;
+        `endif
+    end
+end
+
+    //
+    // Task : Scan
+    //
+    task TASK_SCAN_INTERRUPT_REQUEST();
+    begin
+        #(`TB_CYCLE * 0);
+        interrupt_request_register = 8'b10000000;
+        #(`TB_CYCLE * 1);
+        interrupt_request_register = 8'b11000000;
+        #(`TB_CYCLE * 1);
+        interrupt_request_register = 8'b11100000;
+        #(`TB_CYCLE * 1);
+        interrupt_request_register = 8'b11110000;
+        #(`TB_CYCLE * 1);
+        interrupt_request_register = 8'b11111000;
+        #(`TB_CYCLE * 1);
+        interrupt_request_register = 8'b11111100;
+        #(`TB_CYCLE * 1);
+        interrupt_request_register = 8'b11111110;
+        #(`TB_CYCLE * 1);
+        interrupt_request_register = 8'b11111111;
+        #(`TB_CYCLE * 1);
+        interrupt_request_register = 8'b00000000;
+        #(`TB_CYCLE * 1);
+    end
+    endtask
+
+    //
+    // Task : INTERRUPT MASK TEST
+    //
+    task TASK_INTERRUPT_MASK_TEST();
+    begin
+        $display("***** TEST ALL MASK ***** at %d", tb_cycle_counter);
+        TASK_SCAN_INTERRUPT_REQUEST();
+
+        $display("***** TEST ALL NON-MASK ***** at %d", tb_cycle_counter);
+        interrupt_mask = 8'b00000000;
+        #(`TB_CYCLE * 1);
+        TASK_SCAN_INTERRUPT_REQUEST();
+
+        $display("***** TEST MASK BIT0 ***** at %d", tb_cycle_counter);
+        interrupt_mask = 8'b00000001;
+        #(`TB_CYCLE * 1);
+        TASK_SCAN_INTERRUPT_REQUEST();
+
+        $display("***** TEST MASK BIT1 ***** at %d", tb_cycle_counter);
+        interrupt_mask = 8'b00000010;
+        #(`TB_CYCLE * 1);
+        TASK_SCAN_INTERRUPT_REQUEST();
+
+        $display("***** TEST MASK BIT2 ***** at %d", tb_cycle_counter);
+        interrupt_mask = 8'b00000100;
+        #(`TB_CYCLE * 1);
+        TASK_SCAN_INTERRUPT_REQUEST();
+
+        $display("***** TEST MASK BIT3 ***** at %d", tb_cycle_counter);
+        interrupt_mask = 8'b00001000;
+        #(`TB_CYCLE * 1);
+        TASK_SCAN_INTERRUPT_REQUEST();
+
+        $display("***** TEST MASK BIT4 ***** at %d", tb_cycle_counter);
+        interrupt_mask = 8'b00010000;
+        #(`TB_CYCLE * 1);
+        TASK_SCAN_INTERRUPT_REQUEST();
+
+        $display("***** TEST MASK BIT5 ***** at %d", tb_cycle_counter);
+        interrupt_mask = 8'b00100000;
+        #(`TB_CYCLE * 1);
+        TASK_SCAN_INTERRUPT_REQUEST();
+
+        $display("***** TEST MASK BIT6 ***** at %d", tb_cycle_counter);
+        interrupt_mask = 8'b01000000;
+        #(`TB_CYCLE * 1);
+        TASK_SCAN_INTERRUPT_REQUEST();
+
+        $display("***** TEST MASK BIT7 ***** at %d", tb_cycle_counter);
+        interrupt_mask = 8'b10000000;
+        #(`TB_CYCLE * 1);
+        TASK_SCAN_INTERRUPT_REQUEST();
+
+        #(`TB_CYCLE * 1);
+    end
+    endtask

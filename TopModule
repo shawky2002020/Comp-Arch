@@ -1,1 +1,127 @@
+module TopModule (
+    // Bus
+    input           clock,
+    input           reset,
+    input           chip_select_n,
+    input           read_enable_n,
+    input           write_enable_n,
+    input           address,
+    input       [7:0]   data_bus_in,
+    output reg  [7:0]   data_bus_out,
+    output reg         data_bus_io,
+
+    // I/O
+    input   [2:0]   cascade_in,
+    output  [2:0]   cascade_out,
+    output          cascade_io,
+
+    input           slave_program_n,
+    output          buffer_enable,
+    output          slave_program_or_enable_buffer,
+
+    input           interrupt_acknowledge_n,
+    output          interrupt_to_cpu,
+
+    input   [7:0]   interrupt_request
+);
+
+    //
+    // Data Bus Buffer & Read/Write Control Logic (1)
+    //
+    reg     [7:0]   internal_data_bus;
+    reg             write_initial_command_word_1;
+    reg             write_initial_command_word_2_4;
+    reg             write_operation_control_word_1;
+    reg             write_operation_control_word_2;
+    reg             write_operation_control_word_3;
+    reg             read;
+
+    Bus_Control_Logic u_Bus_Control_Logic (
+        // Bus
+        .clock                              (clock),
+        .reset                              (reset),
+        .chip_select_n                      (chip_select_n),
+        .read_enable_n                      (read_enable_n),
+        .write_enable_n                     (write_enable_n),
+        .address                            (address),
+        .data_bus_in                        (data_bus_in),
+
+        // Control signals
+        .internal_data_bus                  (internal_data_bus),
+        .write_initial_command_word_1       (write_initial_command_word_1),
+        .write_initial_command_word_2_4     (write_initial_command_word_2_4),
+        .write_operation_control_word_1     (write_operation_control_word_1),
+        .write_operation_control_word_2     (write_operation_control_word_2),
+        .write_operation_control_word_3     (write_operation_control_word_3),
+        .read                               (read)
+    );
+
+    //
+    // Interrupt (Service) Control Logic
+    //
+    reg             out_control_logic_data;
+    reg     [7:0]   control_logic_data;
+    reg             level_or_edge_toriggered_config;
+    reg             special_fully_nest_config;
+    reg             enable_read_register;
+    reg             read_register_isr_or_irr;
+    reg     [7:0]   interrupt;
+    reg     [7:0]   highest_level_in_service;
+    reg     [7:0]   interrupt_mask;
+    reg     [7:0]   interrupt_special_mask;
+    reg     [7:0]   end_of_interrupt;
+    reg     [2:0]   priority_rotate;
+    reg             freeze;
+    reg             latch_in_service;
+    reg     [7:0]   clear_interrupt_request;
+
+    Control_Logic u_Control_Logic (
+        // Bus
+        .clock                              (clock),
+        .reset                              (reset),
+
+        // External input/output
+        .cascade_in                         (cascade_in),
+        .cascade_out                        (cascade_out),
+        .cascade_io                         (cascade_io),
+
+        .slave_program_n                    (slave_program_n),
+        .slave_program_or_enable_buffer     (slave_program_or_enable_buffer),
+
+        .interrupt_acknowledge_n            (interrupt_acknowledge_n),
+        .interrupt_to_cpu                   (interrupt_to_cpu),
+
+        // Internal bus
+        .internal_data_bus                  (internal_data_bus),
+        .write_initial_command_word_1       (write_initial_command_word_1),
+        .write_initial_command_word_2_4     (write_initial_command_word_2_4),
+        .write_operation_control_word_1     (write_operation_control_word_1),
+        .write_operation_control_word_2     (write_operation_control_word_2),
+        .write_operation_control_word_3     (write_operation_control_word_3),
+
+        .read                               (read),
+        .out_control_logic_data             (out_control_logic_data),
+        .control_logic_data                 (control_logic_data),
+
+        // Registers to interrupt detecting logics
+        .level_or_edge_toriggered_config    (level_or_edge_toriggered_config),
+        .special_fully_nest_config          (special_fully_nest_config),
+
+        // Registers to Read logics
+        .enable_read_register               (enable_read_register),
+        .read_register_isr_or_irr           (read_register_isr_or_irr),
+
+        // Signals from interrupt detectiong logics
+        .interrupt                          (interrupt),
+        .highest_level_in_service           (highest_level_in_service),
+
+        // Interrupt control signals
+        .interrupt_mask                     (interrupt_mask),
+        .interrupt_special_mask             (interrupt_special_mask),
+        .end_of_interrupt                   (end_of_interrupt),
+        .priority_rotate                    (priority_rotate),
+        .freeze                             (freeze),
+        .latch_in_service                   (latch_in_service),
+        .clear_interrupt_request            (clear_interrupt_request)
+    );
 

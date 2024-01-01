@@ -1,5 +1,6 @@
 `ifndef COMMON_PACKAGE_V
 `define COMMON_PACKAGE_V
+`include "Common_Package.v"
 
 module Control_Logic (
     input reg           clock,

@@ -1,6 +1,4 @@
 
-`include "bag.vh"
-
 module Control_Logic (
     input reg           clock,
     input reg          reset,
@@ -49,6 +47,9 @@ module Control_Logic (
     output reg             latch_in_service,
     output reg    [7:0]    clear_interrupt_request
 );
+
+`include "bag.vh"
+
 	parameter CMD_READY = 2'b00;
 	parameter WRITE_ICW2 = 2'b01;
 	parameter WRITE_ICW3 = 2'b10;

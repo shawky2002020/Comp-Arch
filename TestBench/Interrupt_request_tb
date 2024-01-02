@@ -1,1 +1,82 @@
+module Interrupt_Request_TB;
 
+    // Parameters
+    parameter CLK_PERIOD = 10; // Clock period in time units
+
+    // Signals
+    reg clock;
+    reg reset;
+    reg level_or_edge_toriggered_config;
+    reg freeze;
+    reg [7:0] clear_interrupt_request;
+    reg [7:0] interrupt_request_pin;
+    wire [7:0] interrupt_request_register;
+
+    // Instantiate the module
+    Interrupt_Request UUT (
+        .clock(clock),
+        .reset(reset),
+        .level_or_edge_toriggered_config(level_or_edge_toriggered_config),
+        .freeze(freeze),
+        .clear_interrupt_request(clear_interrupt_request),
+        .interrupt_request_pin(interrupt_request_pin),
+        .interrupt_request_register(interrupt_request_register)
+    );
+
+
+    initial begin
+        clock = 0;
+        forever #5 clock = ~clock;
+    end
+    
+// Initial block for test stimulus
+initial begin
+    $dumpfile("tb_dump.vcd");
+    $dumpvars(0, Interrupt_Request_TB);
+
+    // Initialize inputs
+    reset = 1;
+    level_or_edge_toriggered_config = 0;
+    freeze = 0;
+
+    // Apply initial values
+    #5
+     reset = 0;
+
+    // Test 1
+    #10; // Wait for a few time units
+    interrupt_request_pin = 8'b11001100;
+    clear_interrupt_request = 8'b00000000;
+    level_or_edge_toriggered_config = 1;
+    freeze = 0;
+
+    #10; // Wait for a few time units
+
+    // Test 2
+    interrupt_request_pin = 8'b00110011;
+    clear_interrupt_request = 8'b00000000;
+    level_or_edge_toriggered_config = 0;
+    freeze = 1;
+
+    #10; // Wait for a few time units
+
+    // Test 3
+    interrupt_request_pin = 8'b01010101;
+    clear_interrupt_request = 8'b11110000;
+    level_or_edge_toriggered_config = 1;
+    freeze = 0;
+
+    #10; // Wait for a few time units
+
+    // Test 4
+    interrupt_request_pin = 8'b10101010;
+    clear_interrupt_request = 8'b00001111;
+    level_or_edge_toriggered_config = 0;
+    freeze = 1;
+
+    #10; // Wait for a few time units
+
+    $finish;
+end
+
+endmodule

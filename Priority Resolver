@@ -1,6 +1,4 @@
 
-`include "bag.vh"
-
     module Priority_Resolver (
     // Inputs from control logic
     input   [2:0]   priority_rotate,
@@ -16,6 +14,8 @@
     // Outputs
     output  [7:0]   interrupt
 );
+
+`include "bag.vh"
 
     // Masked flags
     wire [7:0] masked_interrupt_request;

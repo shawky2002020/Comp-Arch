@@ -1,4 +1,4 @@
-`include "bag.vh"
+
 
 module In_Service (
     // Inputs
@@ -33,7 +33,7 @@ module In_Service (
     end
 
 
-
+    `include "bag.vh"
     //
     // Get Highest level in service
     //

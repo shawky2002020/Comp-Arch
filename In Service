@@ -1,3 +1,4 @@
+`include "bag.vh"
 
 module In_Service (
     // Inputs

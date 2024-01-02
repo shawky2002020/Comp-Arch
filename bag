@@ -1,7 +1,7 @@
-`ifndef COMMON_PACKAGE_V
-`define COMMON_PACKAGE_V
+`ifndef BAG_VH
+`define BAG_VH
 
-module Common_Package;
+module bag;
     function [7:0] rotate_right(input [7:0] source, input [2:0] rotate);
         case (rotate)
             3'b000:  rotate_right = {source[0], source[7:1]};
@@ -68,6 +68,5 @@ module Common_Package;
         else bit2num = 3'b111;
     endfunction
 
-endmodule
-
 `endif
+endmodule

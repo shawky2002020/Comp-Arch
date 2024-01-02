@@ -1,7 +1,5 @@
-`ifndef COMMON_PACKAGE_V
-`define COMMON_PACKAGE_V
 
-`include "Common_Package.v"
+`include "bag.vh"
 
     module Priority_Resolver (
     // Inputs from control logic

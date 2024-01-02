@@ -4,13 +4,6 @@
 module In_Service_tb();
 
 
-    `ifdef IVERILOG
-        initial begin
-            $dumpfile("tb.vcd");
-            $dumpvars(0, tb);
-        end
-    `endif
-
     reg clock;
     initial clock = 1'b1;
     always #(`TB_CYCLE / 2) clock = ~clock;
@@ -184,13 +177,9 @@ module In_Service_tb();
 
         #(`TB_CYCLE * 1);
 
-        `ifdef IVERILOG
-            $finish;
-        `elsif MODELSIM
-            $stop;
-        `else
-            $finish;
-        `endif
-    end
+        // End of simulation
+        $finish;
+    end
 endmodule
+
 

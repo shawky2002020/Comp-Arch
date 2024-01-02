@@ -7,13 +7,6 @@ module TopModule_tb();
     timeunit        1ns;
     timeprecision   10ps;
 
-    //
-    // Generate wave file to check
-    //
-    initial begin
-        $dumpfile("tb.vcd");
-        $dumpvars(0, tb);
-    end
 
     //
     // Generate clock

@@ -25,5 +25,5 @@ To work with this project, you will need:
 - **Verilog Compiler/Simulator:** Tools such as ModelSim, Xilinx ISE, or Vivado.
 - **Hardware Simulation Environment:** An environment to run and test the Verilog code.
 
-
+For more details and simulation photos check the report ✔
 [pic_8259.docx](https://github.com/user-attachments/files/16040237/pic_8259.docx)
